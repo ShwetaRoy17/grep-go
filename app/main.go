@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"unicode/utf8"
-	"regexp"
 )
 
 // Ensures gofmt doesn't remove the "bytes" import above (feel free to remove this!)
@@ -40,37 +40,61 @@ func main() {
 	// default exit code is 0 which means success
 }
 
+
+
 func matchReg(line []byte,pattern string) (bool,error){ 
 
-	match,err :=regexp.Match(pattern,line)
-	// if(len(pattern)==0){
-	// 	return true
-	// }
+
+	if len(pattern) == 0 {
+		return true, nil
+	}
+
+	if len(line) == 0 {
+		return false, nil
+	}
+
+	if strings.HasPrefix(pattern,"\\d") {
+		if(line[0]>='0' && line[0]<='9'){
+			return matchReg(line[1:],pattern[2:])
+		}else{
+			return false,nil
+		}
+	}else if strings.HasPrefix(pattern,"\\w"){
+		if (line[0]>='a' && line[0]<='z') || (line[0]>='A' && line[0]<='Z') || (line[0]>='0' && line[0]<='9') || line[0]=='_' {
+			return matchReg(line[1:],pattern[2:])
+		}
+	}else if pattern[0] == '['{
+		closingIndex := strings.Index(pattern, "]")
+		if closingIndex == -1 {
+			return false, fmt.Errorf("unclosed character class")
+		}
+		charClass := pattern[1:closingIndex]
+		match := false	
+		for i := 0; i < len(charClass); i++ {
+			if line[0] == charClass[i] {
+				match = true
+				break
+			}
+		}
+		if match {
+			return matchReg(line[1:], pattern[closingIndex+1:])
+		} else {
+			return false, nil
+		}	
+	}
+	ok:= pattern[0]==line[0]
 	
-	// if(ind>=len(line)){
-	// 	return len(pattern)==0
-	// }
-
-
-
-	// if(strings.HasPrefix(pattern,"\\d")){
-	// 	if	line[ind]>='0' && line[ind]<='9'{
-	// 		return matchReg(line,ind+1,pattern[0:len(pattern)])
-	// 	}else{
-	// 		return matchReg(line,ind+1,pattern)
-	// 	}
-	// }else if(strings.HasPrefix(pattern,"\\w")){
-	// 	if (line[ind]>='a' && line[ind]<='z') || (line[ind]>='A' && line[ind]<='Z') || (line[ind]>='0' && line[ind]<='9') || (line[ind]=='_'){
-	// 		return matchReg(line,ind+1,pattern[0:len(pattern)])
-	// 	}else{
-	// 		return matchReg(line,ind+1,pattern)
-	// 	}
-	// }
+	if !ok{
+		return false,nil
+	}
+	ok,err:= matchReg(line[1:],pattern[1:])
 	
 
-
-	return match,err
+	
+	return ok,err
 }
+
+
 
 func matchLine(line []byte, pattern string) (bool, error) {
 	var ok bool
